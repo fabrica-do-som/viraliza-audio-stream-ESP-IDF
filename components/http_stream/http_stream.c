@@ -1,5 +1,17 @@
 #include "http_stream.h"
 
+#include <stdio.h>
+#include <string.h>
+#include <sys/param.h>
+#include "esp_log.h"
+#include "esp_err.h"
+
+#include "esp_tls.h"
+#include "esp_crt_bundle.h"
+#include "esp_http_client.h"
+
+#include "freertos/FreeRTOS.h"
+
 // [http_server] ---> http_stream ---> aac decoder ---> i2s_stream ---> DAC
 
 static const char *TAG = "HTTP_STREAM";
@@ -43,7 +55,7 @@ void http_stream_task(void *pvParameters)
     // Buffer de recepção intermediário na SRAM
     char rx_buffer[HTTP_CHUNK_SIZE];
 
-    // Configuração do cliente baseada no exemplo da Espressif
+    // Configuração do cliente HTTP para streaming de áudio
     esp_http_client_config_t config = {
         .url = stream_cfg->url,
         .event_handler = http_event_handler,
@@ -56,6 +68,7 @@ void http_stream_task(void *pvParameters)
         .keep_alive_enable = true,
     };
 
+    // Cria e inicializa o cliente HTTP
     esp_http_client_handle_t client = esp_http_client_init(&config);
     if (client == NULL) {
         ESP_LOGE(TAG, "Falha ao inicializar esp_http_client");
@@ -71,7 +84,7 @@ void http_stream_task(void *pvParameters)
     while (1) {
         ESP_LOGI(TAG, "Conectando a: %s", stream_cfg->url);
 
-        // 1. Abre a conexão TCP/TLS (Low-level API)
+        // Abre a conexão HTTP com o servidor de streaming
         esp_err_t err = esp_http_client_open(client, 0);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Falha ao abrir conexão HTTP (%s). Nova tentativa em 3s...", esp_err_to_name(err));

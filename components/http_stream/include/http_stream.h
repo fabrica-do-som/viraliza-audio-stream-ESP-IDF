@@ -1,16 +1,5 @@
 #pragma once
 
-#include <stdio.h>
-#include <string.h>
-#include <sys/param.h>
-#include "esp_log.h"
-#include "esp_err.h"
-
-#include "esp_tls.h"
-#include "esp_crt_bundle.h"
-#include "esp_http_client.h"
-
-#include "freertos/FreeRTOS.h"
 #include "freertos/ringbuf.h"
 
 #define HTTP_CHUNK_SIZE 1024

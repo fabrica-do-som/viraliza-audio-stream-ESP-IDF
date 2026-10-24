@@ -1,19 +1,7 @@
 #pragma once
 
-#include <string.h>
-#include "esp_err.h"
-#include "esp_log.h"
-
-#include "esp_wifi.h"
-#include "esp_event.h"
-#include "esp_system.h"
-#include "esp_netif.h"
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
-
 #include "secrets.h"
+#include "esp_err.h"
 
 /**
  * @brief Event group for WiFi events
