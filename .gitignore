@@ -1,3 +1,6 @@
+# wifi credentials
+**/wifi_sta/include/secrets.h
+
 # macOS
 .DS_Store
 .AppleDouble

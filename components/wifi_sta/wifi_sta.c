@@ -10,9 +10,6 @@ static esp_netif_t *sta_netif = NULL;
 static esp_event_handler_instance_t instance_any_id = NULL;
 static esp_event_handler_instance_t instance_got_ip = NULL;
 
-#define WIFI_SSID "Noctua"
-#define WIFI_PASS "38497247"
-
 // Event handler: WiFi events
 static void on_wifi_event(void *handle_arg,
                           esp_event_base_t event_base,

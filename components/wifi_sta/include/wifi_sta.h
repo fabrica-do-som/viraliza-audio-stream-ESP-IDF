@@ -13,6 +13,8 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 
+#include "secrets.h"
+
 /**
  * @brief Event group for WiFi events
  */
