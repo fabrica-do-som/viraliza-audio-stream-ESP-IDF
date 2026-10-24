@@ -12,11 +12,13 @@
 
 #include "wifi_sta.h"
 #include "http_stream.h"
+#include "radio_url.h"
 
 static const char *TAG = "MAIN_TASK";
 
 static RingbufHandle_t aac_ring_buffer = NULL;
 static http_stream_config_t stream_config;
+static BaseType_t task_handle;
 
 void app_main(void)
 {
@@ -60,19 +62,23 @@ void app_main(void)
     } while (sync_err != ESP_OK);
     ESP_LOGI("SNTP", "Relogio sincronizado");
 
-    // Aloca o RingBuffer compartilhado (64 KB)
+    // Aloca o RingBuffer compartilhado (64 KB) e atualiza a configuração do stream com o RingBuffer alocado
     aac_ring_buffer = xRingbufferCreate(64 * 1024, RINGBUF_TYPE_BYTEBUF);
     if (aac_ring_buffer == NULL)
     {
         ESP_LOGE(TAG, "Falha ao alocar RingBuffer na memoria!");
         return;
     }
-
-    // Configura os parâmetros do stream
-    stream_config.url = RADIO_URL;
+    stream_config.url = radio_url;
     stream_config.ring_buffer = aac_ring_buffer;
 
-    //xTaskCreatePinnedToCore(http_stream_task, "http_stream_task", 8192, (void *)&stream_config, 5, NULL, 0);
+    task_handle = xTaskCreatePinnedToCore(http_stream_task, "http_stream_task", 8192, &stream_config, 5, NULL, 0);
+    if(task_handle != pdPASS){
+        ESP_LOGE(TAG, "Falha ao criar HTTP Task");
+        vRingbufferDelete(aac_ring_buffer);
+        aac_ring_buffer = NULL;
+        return;
+    }
 
     // #TODO - DECODER I2S
 }

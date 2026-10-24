@@ -1,6 +1,6 @@
 #pragma once
 
-#include "secrets.h"
+#include "wifi_credentials.h"
 #include "esp_err.h"
 
 /**

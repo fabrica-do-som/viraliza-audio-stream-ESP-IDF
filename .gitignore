@@ -1,5 +1,8 @@
 # wifi credentials
-**/wifi_sta/include/secrets.h
+**/wifi_sta/include/wifi_credentials.h
+
+# radio stream URL
+**/http_stream/include/radio_url.h
 
 # macOS
 .DS_Store
