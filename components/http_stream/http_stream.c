@@ -51,7 +51,7 @@ static esp_err_t http_event_handler(esp_http_client_event_t *evt)
 void http_stream_task(void *pvParameters)
 {
     http_stream_config_t *stream_cfg = (http_stream_config_t *)pvParameters;
-    ESP
+    ESP_LOGI(TAG, "Parâmetros recebidos: URL: %s / RingBuffer: %p", stream_cfg->url, (void *)stream_cfg->ring_buffer);
 
     if (stream_cfg == NULL || stream_cfg->url == NULL || stream_cfg->ring_buffer == NULL)
     {
@@ -76,8 +76,6 @@ void http_stream_task(void *pvParameters)
 
     // Buffer de recepção intermediário na SRAM
     char rx_buffer[HTTP_CHUNK_SIZE];
-
-
 
     // Cria e inicializa o cliente HTTP
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -122,49 +120,61 @@ void http_stream_task(void *pvParameters)
             ESP_LOGI(TAG, "Resposta chunked = %s", esp_http_client_is_chunked_response(client) ? "sim" : "nao");
         }
 
-        /* Temporario: terminar o teste antes do loop de leitura do audio. */
-        esp_http_client_cleanup(client);
-        vTaskDelete(NULL);
-        return;
-
-        if (status_code >= 200 && status_code < 300)
+        if (content_length >= 0 && status_code == 200)
         {
-            // 3. Loop contínuo de leitura do fluxo de áudio
-            while (1)
+            size_t total_bytes = 0;
+
+            int64_t inicio = esp_timer_get_time();
+            int64_t ultimo_log = inicio;
+
+            while (esp_timer_get_time() - inicio < 10000000LL)
             {
-                int read_len = esp_http_client_read(client, rx_buffer, sizeof(rx_buffer));
+                int read_len = esp_http_client_read(
+                    client,
+                    rx_buffer,
+                    sizeof(rx_buffer));
 
                 if (read_len > 0)
                 {
-                    // Envia os bytes brutos para o RingBuffer (produtor para o Core 1)
-                    BaseType_t ret = xRingbufferSend(
-                        stream_cfg->ring_buffer,
-                        rx_buffer,
-                        read_len,
-                        pdMS_TO_TICKS(200) // Timeout para não prender a task indefinidamente se o buffer encher
-                    );
-
-                    if (ret != pdTRUE)
+                    if (total_bytes == 0)
                     {
-                        ESP_LOGW(TAG, "Buffer cheio! Core 1 ainda não consumiu os dados.");
+                        ESP_LOGI(TAG, "Amostra inicial do corpo HTTP:");
+
+                        ESP_LOG_BUFFER_HEX_LEVEL(
+                            TAG,
+                            rx_buffer,
+                            MIN(read_len, 32),
+                            ESP_LOG_INFO);
                     }
+
+                    total_bytes += (size_t)read_len;
+                }
+                else if (read_len == -ESP_ERR_HTTP_EAGAIN)
+                {
+                    ESP_LOGW(TAG, "Timeout aguardando dados");
+                    break;
                 }
                 else if (read_len == 0)
                 {
-                    // Servidor não enviou dados no instante ou fechou a conexão
-                    if (!esp_http_client_is_chunked_response(client))
-                    {
-                        ESP_LOGW(TAG, "Conexão encerrada pelo servidor.");
-                        break;
-                    }
-                    vTaskDelay(pdMS_TO_TICKS(10));
+                    ESP_LOGW(TAG, "Fim da leitura do fluxo");
+                    break;
                 }
                 else
                 {
-                    ESP_LOGE(TAG, "Erro de leitura no socket (read_len = %d).", read_len);
+                    ESP_LOGE(TAG, "Erro de leitura: %d", read_len);
                     break;
                 }
+
+                int64_t agora = esp_timer_get_time();
+
+                if (agora - ultimo_log >= 1000000LL)
+                {
+                    ESP_LOGI(TAG, "Total recebido: %zu bytes", total_bytes);
+                    ultimo_log = agora;
+                }
             }
+
+            ESP_LOGI(TAG, "Teste encerrado: %zu bytes recebidos", total_bytes);
         }
         else if (status_code == 301 || status_code == 302)
         {
